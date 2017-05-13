@@ -51,6 +51,7 @@ symbol* new_symbol (char* id,char* type);
 Tnode* new_node(symbol* n);
 void insert_node(Tnode*,symbol*);
 int weight(char* str1,char* str2);
+int lookup_index(char* id);
 
 int symnum;											/*The number of the symbol*/
 
@@ -121,7 +122,7 @@ Type
     |DOUBLE                             {strcpy(type,yylval.type);}
     ;
 Assign
-    :ID ASSIGN Arith                    {printf("id %s\n",id);symbol_assign(id,num.fnum);}
+    :ID ASSIGN Arith                    {printf("%s = %d\n",id,num.fnum);symbol_assign(id,num.fnum);}
     ;
 Arith
     : Term
@@ -130,13 +131,13 @@ Arith
     ;
 Term
     :Factor                             
-    |Term MUL Factor                    { num.fnum = $3;printf("MUL %d\n",num.fnum);}/*print operator when you meet */
-    |Term DIV Factor                    {printf("DIV\n"); num.fnum = num.fnum*$3;}
+    |Term MUL Factor                    { num.fnum = $1*$3;printf("MUL %lf*%lf %lf\n",$1,$3,num.fnum);}/*print operator when you meet */
+    |Term DIV Factor                    { num.fnum = $1/$3;printf("DIV %lf\n",num.fnum);}
     ;
 Factor
     : Group
-    | NUMBER                            {num.inum = yylval.intval;}
-    | FLOATNUM                          {num.fnum = yylval.floatval;}
+    | NUMBER                            {num.fnum =(double)yylval.intval; printf("num %d\n",  yylval.intval);}
+    | FLOATNUM                          {num.fnum = yylval.floatval;printf("num %d\n",  yylval.intval);}
     | ID                                {strcpy(id,yylval.token);printf("id%s\n",yylval.token );}
     ;
 Print    
@@ -206,8 +207,15 @@ symbol* lookup_symbol(char* id){
 
 /*symbol value assign function*/
 void symbol_assign(char* id, double data) {
+    printf("data = %lf\n",data );
     symbol *node = lookup_symbol(id);
-    node->data.fval = data;
+    int index = lookup_index(id);
+    if(node != NULL && index != -1)
+    {
+        node->data.fval = data;
+        buffer[index]->data.fval = data;
+    }
+    printf("node data = %d\n",(int)buffer[index]->data.fval);
 }   
 
 /*symbol dump function*/
@@ -285,4 +293,22 @@ int weight(char* str1,char* str2)
             return 1;
     }
     return strlen(str1)<strlen(str2)?0:1;
+}
+int lookup_index(char* id){
+    Tnode* node = root->right;
+    while(node != NULL)
+    {
+        if(strcmp(id,node->data->id) == 0)
+        {
+            return node->data->index;
+        }
+        else
+        {
+            if(weight(id,node->data->id) == 0)
+                node = node->left;
+            else
+                node = node->right;
+        }
+    }
+    return -1;
 }
