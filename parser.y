@@ -91,7 +91,7 @@ union NUM{
 	Use %type to specify the type of token within < > 
 	if the token or name of grammar rule will return value($$) 
 */
-%type <floatval> Arith Term Factor Group NUMBER
+%type <floatval> Arith Term Factor Group NUMBER FLOATNUM
 %type <str>  STRING
 %type <token> ID
 %type <type> Type INT DOUBLE
@@ -115,37 +115,37 @@ Stmt
     ;
 Decl
     : Type ID                           {insert_symbol(id,type,0); memset(yylval.token,'\0',strlen(yylval.token)) ;}
-    | Type ID ASSIGN Arith              {insert_symbol(id,type,0);symbol_assign(id,num.fnum);}
+    | Type ID ASSIGN Arith              {insert_symbol(id,type,0);symbol_assign(id,$4);}
     ;
 Type
-    :INT                                {strcpy(type,yylval.type);}
-    |DOUBLE                             {strcpy(type,yylval.type);}
+    :INT                                {strcpy(type,"int");}
+    |DOUBLE                             {strcpy(type,"double");}
     ;
 Assign
-    :ID ASSIGN Arith                    {printf("%s = %d\n",id,num.fnum);symbol_assign(id,num.fnum);}
+    :ID ASSIGN Arith                    {symbol_assign(id,$3);}
     ;
 Arith
     : Term
-    | Arith ADD Term                    { num.fnum = $1+$3; printf("ADD :%lf\n",num.fnum);}/*print operator when you meet */
-    | Arith SUB Term                    {printf("SUB\n"); num.fnum = $1-$3;}/*print operator when you meet */
+    | Arith ADD Term                    { $$ = $1+$3; printf("ADD\n");}/*print operator when you meet */
+    | Arith SUB Term                    { $$ = $1-$3; printf("SUB\n");}/*print operator when you meet */
     ;
 Term
     :Factor                             
-    |Term MUL Factor                    { num.fnum = $1*$3;printf("MUL %lf*%lf %lf\n",$1,$3,num.fnum);}/*print operator when you meet */
-    |Term DIV Factor                    { num.fnum = $1/$3;printf("DIV %lf\n",num.fnum);}
+    |Term MUL Factor                    { $$ = $1*$3;printf("MUL\n");}/*print operator when you meet */
+    |Term DIV Factor                    { $$ = $1/$3;printf("DIV\n");}
     ;
 Factor
     : Group
-    | NUMBER                            {num.fnum =(double)yylval.intval; printf("num %d\n",  yylval.intval);}
-    | FLOATNUM                          {num.fnum = yylval.floatval;printf("num %d\n",  yylval.intval);}
-    | ID                                {strcpy(id,yylval.token);printf("id%s\n",yylval.token );}
+    | NUMBER                            {$$ = $1;}
+    | FLOATNUM                          {$$ = $1;}
+    | ID                                {strcpy(id,yylval.token);}
     ;
 Print    
-    : PRINT Group
-    | PRINT LB STRING RB                {printf("str %s\n",$3);}
+    : PRINT Group                       {printf("Print : %d\n",(int)$2);}
+    | PRINT LB STRING RB                {printf("Print : %s\n",$3);}
     ;
 Group
-    :LB Arith RB
+    :LB Arith RB                        {$$ = $2;}
     ;
 %%
 
@@ -156,7 +156,7 @@ int main(int argc, char** argv)
     create_symbol();   
     yyparse();
 
-	printf("%d \n\n",yylineno+1);
+	printf("\n\nTotal Lines : %d \n\n",yylineno+1);
 	dump_symbol();
     return 0;
 }
@@ -207,7 +207,7 @@ symbol* lookup_symbol(char* id){
 
 /*symbol value assign function*/
 void symbol_assign(char* id, double data) {
-    printf("data = %lf\n",data );
+    
     symbol *node = lookup_symbol(id);
     int index = lookup_index(id);
     if(node != NULL && index != -1)
@@ -215,16 +215,20 @@ void symbol_assign(char* id, double data) {
         node->data.fval = data;
         buffer[index]->data.fval = data;
     }
-    printf("node data = %d\n",(int)buffer[index]->data.fval);
+    return;
 }   
 
 /*symbol dump function*/
 void dump_symbol(){
 	int i;
+    printf("The symbol table : \n\n");
     printf("ID \t Type \t Data\n");
     for(i=1;i<node_index;i++)
     {
-        printf("%s \t %s \t %lf\n",buffer[i]->id,buffer[i]->type,buffer[i]->data.fval);
+        if(strcmp(buffer[i]->type,"int")==0)
+            printf("%s \t %s \t %d\n",buffer[i]->id,buffer[i]->type,(int)buffer[i]->data.fval);
+        else
+            printf("%s \t %s \t %lf\n",buffer[i]->id,buffer[i]->type,buffer[i]->data.fval);
     }
 }
 symbol* new_symbol(char* id,char* type)

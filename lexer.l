@@ -45,7 +45,7 @@ space		[ ]
 ([Dd][Oo][Uu][Bb][Ll][Ee])		{strcpy(yylval.type,yytext); return DOUBLE;}
 [\n]							{ yylineno++;}
 "\"".+"\""						{strcpy(yylval.str,yytext);return STRING;}
-{num}							{yylval.intval = atoi(yytext);return NUMBER;}
+{num}							{yylval.floatval = atof(yytext);return NUMBER;}
 {floatnum} 						{yylval.floatval = atof(yytext);return FLOATNUM;}
 {id}							{strcpy(id,yytext);
                                 return ID;}
