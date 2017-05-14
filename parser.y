@@ -109,9 +109,9 @@ lines
 /* Read in sequence */
 Stmt
     : Decl SEM                          {printf("Decl\n" );memset(&yylval,0,sizeof(yylval));num.fnum =0.0;}
-    | Print SEM                         {printf("Print\n");memset(&yylval,0,sizeof(yylval));num.fnum =0.0;}/* Print */
+    | Print SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0;}/* Print */
     | Assign SEM                        {printf("Assign\n");memset(&yylval,0,sizeof(yylval));num.fnum =0.0;}/* Assignment (e.g. a = 5; ) */
-    | Arith SEM                         {printf("Arith\n");memset(&yylval,0,sizeof(yylval));num.fnum =0.0; }/* Arithmetic */
+    | Arith SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0; }/* Arithmetic */
     ;
 Decl
     : Type ID                           {insert_symbol(id,type,0); memset(yylval.token,'\0',strlen(yylval.token)) ;}
@@ -125,20 +125,20 @@ Assign
     :ID ASSIGN Arith                    {symbol_assign(id,$3);}
     ;
 Arith
-    : Term
+    : Term                              { $$ = $1;}
     | Arith ADD Term                    { $$ = $1+$3; printf("ADD\n");}/*print operator when you meet */
     | Arith SUB Term                    { $$ = $1-$3; printf("SUB\n");}/*print operator when you meet */
     ;
 Term
-    :Factor                             
+    :Factor                             { symbol* temp = lookup_symbol(id); $$ = temp->data.fval;}
     |Term MUL Factor                    { $$ = $1*$3;printf("MUL\n");}/*print operator when you meet */
     |Term DIV Factor                    { $$ = $1/$3;printf("DIV\n");}
     ;
 Factor
     : Group
-    | NUMBER                            {$$ = $1;}
-    | FLOATNUM                          {$$ = $1;}
-    | ID                                {strcpy(id,yylval.token);}
+    | NUMBER                            { $$ = $1;}
+    | FLOATNUM                          { $$ = $1;}
+    | ID                                { strcpy(id,yylval.token);}
     ;
 Print    
     : PRINT Group                       {printf("Print : %d\n",(int)$2);}
