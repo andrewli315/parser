@@ -41,14 +41,13 @@ space		[ ]
 {sem}							{ return SEM;}
 ([Pp][Rr][Ii][Nn][Tt])			{ return PRINT;}
 ([Ww][Hh][Ii][Ll][Ee])			{ return WHILE;}
-([Ii][Nn][Tt])					{strcpy(yylval.type,yytext); return INT;}
-([Dd][Oo][Uu][Bb][Ll][Ee])		{strcpy(yylval.type,yytext); return DOUBLE;}
+([Ii][Nn][Tt])					{ return INT;}
+([Dd][Oo][Uu][Bb][Ll][Ee])		{ return DOUBLE;}
 [\n]							{ yylineno++;}
 "\"".+"\""						{strcpy(yylval.str,yytext);return STRING;}
 {num}							{yylval.floatval = atof(yytext);return NUMBER;}
 {floatnum} 						{yylval.floatval = atof(yytext);return FLOATNUM;}
-{id}							{strcpy(id,yytext);
-                                return ID;}
+{id}							{ strcpy(yylval.token,yytext);return ID;}
 [ \t]							{;} /* Ignore */
 [^ \n\t] 						{;} /* Ignore other charactor sets */
 %%
