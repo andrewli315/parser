@@ -24,8 +24,8 @@ typedef struct SYMBOL{
     char *type;
     int index;
     union DATA{
-        int ival;
-        double fval;
+    int ival;
+    double fval;
     }data;
 }symbol;
 
@@ -44,7 +44,7 @@ extern int yylex();
 
 void yyerror(char *);
 void create_symbol();								/*establish the symbol table structure*/
-void insert_symbol(char* id, char* type, int data);	/*Insert an undeclared ID in symbol table*/
+int insert_symbol(char* id, char* type, int data);	/*Insert an undeclared ID in symbol table*/
 void symbol_assign(char* id, double data);				/*Assign value to a declared ID in symbol table*/
 symbol* lookup_symbol(char* id);						/*Confirm the ID exists in the symbol table*/
 void dump_symbol();									/*List the ids and values of all data*/
@@ -57,6 +57,7 @@ int lookup_index(char* id);
 int symnum;											/*The number of the symbol*/
 int isID;
 int IdnotExist;
+int error;
 Tnode* root;
 symbol *buffer[100];
 int node_index = 0;
@@ -110,83 +111,85 @@ lines
 
 /* Read in sequence */
 Stmt
-    : Decl SEM                          {printf("Decl\n" );memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;}
-    | Print SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;}/* Print */
-    | Assign SEM                        {printf("Assign\n");memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;dump_symbol();}/* Assignment (e.g. a = 5; ) */
-    | Arith SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0; }/* Arithmetic */
+    : Decl SEM                          {printf("Decl\n" );memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;IdnotExist == 0;}
+    | Print SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;IdnotExist == 0;}/* Print */
+    | Assign SEM                        {printf("Assign\n");memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0;IdnotExist == 0;}/* Assignment (e.g. a = 5; ) */
+    | Arith SEM                         {memset(&yylval,0,sizeof(yylval));num.fnum =0.0;isID=0; IdnotExist == 0;}/* Arithmetic */
     ;
 Decl
     : Type ID                           {insert_symbol(yylval.token,type,0); memset(yylval.token,'\0',strlen(yylval.token)) ;}
-    | Type ID ASSIGN Arith              {insert_symbol($2,type,0); symbol_assign($2,$4);}
+    | Type ID ASSIGN Arith              {
+                                            int flag = insert_symbol($2,type,0); 
+                                            if( flag == 0)
+                                                symbol_assign($2,$4);
+                                        }
     ;
 Type
     :INT                                {strcpy(type,"int");}
     |DOUBLE                             {strcpy(type,"double");}
-    ;
+     ;
 Assign
     :ID ASSIGN Arith                    { 
-                                            if(isID==0)
+                                            if(isID == 0 )
                                             {
-                                                printf("%s = %lf\n", $1,$3);
                                                 symbol_assign($1,$3);
                                             }
                                             else
                                             {
-                                                symbol* temp = lookup_symbol(id);
-                                                if(temp == NULL)
+                                                symbol* temp1 = lookup_symbol(id);
+                                                if( IdnotExist == 1)
                                                 {
-                                                    yyerror(strcat("cannot find the variables ",id ));
+                                                    printf(RED"<ERROR> ");
+                                                    printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
                                                 }
                                                 else
                                                 {
-                                                    symbol_assign($1,temp->data.fval);
+                                                    symbol_assign($1,temp1->data.fval);
                                                 }
                                             }
                                             isID = 0;
                                         }
     ;
 Arith
-    : Term                              { 
-                                            if(isID==0)
-                                            {
-                                                $$ = $1;
+    : Term                              { $$ = $1; }
+    | Arith ADD Term                    {
+                                            if(isID == 0)
+                                            {                                            
+                                                $$ = $1 + $3;
+                                                printf("ADD\n");
                                             }
-                                            else
+                                            else if(IdnotExist == 1)
                                             {
-                                                ;
+                                                printf(RED"<ERROR> ");
+                                                printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
                                             }
-                                        }
-    | Arith ADD Term                    { $$ = $1+$3; printf("ADD\n");}/*print operator when you meet */
-    | Arith SUB Term                    { $$ = $1-$3; printf("SUB\n");}/*print operator when you meet */
+
+                                        }/*print operator when you meet */
+    | Arith SUB Term                    { 
+                                            if(isID == 0 )
+                                            {                                            
+                                                $$ = $1 - $3;
+                                                printf("SUB\n");
+                                            }
+                                            else if(IdnotExist == 1)
+                                            {
+                                                printf(RED"<ERROR> ");
+                                                printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
+                                            }
+
+                                        }/*print operator when you meet */
     ;
 Term
-    :Factor                             { 
-                                            if(isID==0)
-                                            {
-                                                $$ = $1;
-                                            }
-                                            else
-                                            {
-                                            
-                                            }
-                                        }
+    :Factor                             { $$ = $1; isID=0;}
     |Term MUL Factor                    { 
                                             printf("MUL\n");
                                             if(isID == 0)
-                                            {
-                                                $$ = $1*$3;    
+                                            {                                            
+                                                $$ = $1 * $3;
                                             }
-                                            else
+                                            else if(IdnotExist == 1)
                                             {
-                                                if(IdnotExist == 0)
-                                                {
-                                                    $$ = $1*$3;
-                                                }
-                                                else
-                                                {
-                                                    printf(RED"<ERROR> ");
-                                                    printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
-                                                }
+                                                
                                             }
 
                                         }/*print operator when you meet */
@@ -200,21 +203,15 @@ Term
                                                 }
                                                 else if($3 ==0)
                                                 {
+                                                    $$ = 0;
                                                     printf(RED"<ERROR> ");
                                                     printf(WHITE" divide by zero ------ on %d line \n", yylineno+1);
                                                 }
                                             }
-                                            else
+                                            else if(IdnotExist == 1)
                                             {
-                                                if(IdnotExist == 0)
-                                                {
-                                                    $$ = $1/$3;
-                                                }
-                                                else
-                                                {
-                                                    printf(RED"<ERROR> ");
-                                                    printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
-                                                }
+                                                printf(RED"<ERROR> ");
+                                                printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
                                             }
                                         }
     ;
@@ -225,48 +222,38 @@ Factor
     | ID                                { 
                                             isID = 1;
                                             strcpy(id,yylval.token);
-                                            printf("%s\n", id);
                                             symbol *temp = lookup_symbol(id);
                                             if(temp == NULL)
                                             {
                                                 IdnotExist = 1;
+                                                isID = 1 ;
                                             }
                                             else
                                             {
                                                 $$ = temp->data.fval;
+                                                IdnotExist = 0;
+                                                isID = 0;
                                             }
                                         }
     ;
 Print    
     : PRINT Group                       {
-                                            if(isID==0)
+                                            if(IdnotExist == 0)
                                             {
                                                 printf("Print : %d\n",(int)$2);
                                             }
-                                            else
-                                            {
-                                                symbol* temp = lookup_symbol(id);
-                                                if(temp == NULL)
-                                                {
-                                                    printf(RED"<ERROR> ");
-                                                    printf(WHITE" cannot find variables %s ------ on %d line \n", id , yylineno+1);
-                                                }
-                                                else
-                                                {
-                                                    
-                                                    printf("Print : %lf\n",temp->data.fval);
-                                                }
+                                            else{
+                                                printf(RED"<ERROR> ");
+                                                printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
                                             }
                                         }
     | PRINT LB STRING RB                {printf("Print : %s\n",$3);}
     ;
 Group
     :LB Arith RB                        { 
-                                            printf("testGroup\n");
-                                            printf("%s %d\n", id,isID);
+
                                             if(isID==0)
                                             {
-                                                printf("%lf\n",$2);
                                                 $$ =  $2;
                                             }
                                             else
@@ -274,15 +261,16 @@ Group
                                                 symbol* temp = lookup_symbol(id);
                                                 if(temp == NULL)
                                                 {
-
+                                                    IdnotExist = 1;
+                                                    isID = 1;
                                                 }
                                                 else
                                                 {
-                                                    printf("%s\n", id);
                                                     $$ = temp->data.fval;
+                                                    isID = 0;
                                                 }
                                             }
-                                            isID = 0;
+                                            
                                         }
     ;
 %%
@@ -312,22 +300,23 @@ void create_symbol() {
 }
 
 /*symbol insert function*/
-void insert_symbol(char* id, char* type, int data) {
-    dump_symbol();
-	printf("Insert symbol : %s\n",id);
+int insert_symbol(char* id, char* type, int data) {
+    //dump_symbol();
+	
     if(lookup_symbol(id) != NULL )
     {
         printf(RED"<ERROR> ");
         printf(WHITE"re-declaration for variables %s ------ on %d line \n", id , yylineno+1);
-        return;
+        return -1;
     }
     else
     {
+        printf("Insert symbol : %s\n",id);
         symbol *temp = new_symbol(id,type);
         insert_node(root,temp);
         symnum++;
     }
-    return;
+    return 0;
 }
 
 /*symbol value lookup and check exist function*/
@@ -359,6 +348,10 @@ void symbol_assign(char* id, double data) {
     {
         node->data.fval = data;
         buffer[index]->data.fval = data;
+    }
+    else{
+        printf(RED"<ERROR> ");
+        printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
     }
     return;
 }   
