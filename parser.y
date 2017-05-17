@@ -57,7 +57,7 @@ int lookup_index(char* id);
 int symnum;											/*The number of the symbol*/
 int isID;
 int IdnotExist;
-int error;
+int isFloat;
 Tnode* root;
 symbol *buffer[100];
 int node_index = 0;
@@ -218,7 +218,7 @@ Term
 Factor
     : Group
     | NUMBER                            { $$ = $1;}
-    | FLOATNUM                          { $$ = $1;}
+    | FLOATNUM                          { $$ = $1;isFloat=1;}
     | ID                                { 
                                             isID = 1;
                                             strcpy(id,yylval.token);
@@ -240,12 +240,17 @@ Print
     : PRINT Group                       {
                                             if(IdnotExist == 0)
                                             {
-                                                printf("Print : %d\n",(int)$2);
+
+                                                if(isFloat == 1)
+                                                    printf("Print : %lf\n",$2);
+                                                else
+                                                    printf("Print : %d\n",(int)$2);
                                             }
                                             else{
                                                 printf(RED"<ERROR> ");
                                                 printf(WHITE" cannot find the variables %s ------ on %d line \n", id , yylineno+1);   
                                             }
+                                            isFloat = 0;
                                         }
     | PRINT LB STRING RB                {printf("Print : %s\n",$3);}
     ;
